@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:football_news/widgets/left_drawer.dart';
+import 'dart:convert';
+import 'package:provider/provider.dart';
+import 'package:pbp_django_auth/pbp_django_auth.dart';
+import 'package:football_news/screens/menu.dart';
 
 class NewsFormPage extends StatefulWidget {
   const NewsFormPage({super.key});
@@ -27,6 +31,7 @@ class _NewsFormPageState extends State<NewsFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    final request = context.watch<CookieRequest>();
     return Scaffold(
       appBar: AppBar(
         title: const Center(child: Text('Form Tambah Berita')),
@@ -160,39 +165,102 @@ class _NewsFormPageState extends State<NewsFormPage> {
                     style: ButtonStyle(
                       backgroundColor: MaterialStateProperty.all(Colors.indigo),
                     ),
-                    onPressed: () {
+
+                    // Salin dan ganti seluruh blok 'onPressed' Anda
+                    onPressed: () async {
                       if (_formKey.currentState!.validate()) {
+                        // 1. Tampilkan dialog loading (dari Tutorial 8)
                         showDialog(
                           context: context,
-                          builder: (context) {
-                            return AlertDialog(
-                              title: const Text('Berita berhasil disimpan!'),
-                              content: SingleChildScrollView(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                          barrierDismissible: false,
+                          builder: (BuildContext context) {
+                            return const Dialog(
+                              child: Padding(
+                                padding: EdgeInsets.all(20.0),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text('Judul: $_title'),
-                                    Text('Isi: $_content'),
-                                    Text('Kategori: $_category'),
-                                    Text('Thumbnail: $_thumbnail'),
-                                    Text(
-                                      'Unggulan: ${_isFeatured ? "Ya" : "Tidak"}',
-                                    ),
+                                    CircularProgressIndicator(),
+                                    SizedBox(width: 20),
+                                    Text("Menyimpan..."),
                                   ],
                                 ),
                               ),
-                              actions: [
-                                TextButton(
-                                  child: const Text('OK'),
-                                  onPressed: () {
-                                    Navigator.pop(context);
-                                  },
-                                ),
-                              ],
                             );
                           },
                         );
-                        _formKey.currentState!.reset();
+
+                        // 2. Kirim data ke server (dari Tutorial 8)
+                        final response = await request.postJson(
+                          // (Pastikan URL ini benar untuk Anda)
+                          "http://localhost:8000/create-flutter/",
+                          jsonEncode({
+                            "title": _title,
+                            "content": _content,
+                            "thumbnail": _thumbnail,
+                            "category": _category,
+                            "is_featured": _isFeatured,
+                          }),
+                        );
+
+                        if (context.mounted) {
+                          // 3. Tutup dialog loading (dari Tutorial 8)
+                          Navigator.pop(context);
+                        }
+
+                        if (context.mounted) {
+                          // 4. Cek apakah server merespons "success"
+                          if (response['status'] == 'success') {
+                            // 5. Tampilkan pop-up "Berhasil" (Logika dari Tutorial 7)
+                            showDialog(
+                              context: context,
+                              builder: (context) {
+                                return AlertDialog(
+                                  // Judul dari Tutorial 7
+                                  title: const Text(
+                                    'Produk berhasil tersimpan',
+                                  ),
+                                  content: SingleChildScrollView(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        // Konten lengkap dari Tutorial 7
+                                        Text('Judul: $_title'),
+                                        Text('Isi: $_content'),
+                                        Text('Kategori: $_category'),
+                                        Text('Thumbnail: $_thumbnail'),
+                                        Text(
+                                          'Unggulan: ${_isFeatured ? "Ya" : "Tidak"}',
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      child: const Text('OK'),
+                                      onPressed: () {
+                                        // Aksi dari Tutorial 7 (reset form)
+                                        Navigator.pop(context);
+                                        _formKey.currentState!.reset();
+                                      },
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                            // (Bagian Navigator.pushReplacement dihapus agar sesuai Tutorial 7)
+                          } else {
+                            // Tampilkan pesan error jika server GAGAL
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Something went wrong, please try again.",
+                                ),
+                              ),
+                            );
+                          }
+                        }
                       }
                     },
                     child: const Text(

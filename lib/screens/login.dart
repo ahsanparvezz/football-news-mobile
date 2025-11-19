@@ -148,7 +148,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     child: const Text('Login'),
                   ),
-                  const SizedBox(height: 36.0),
+                  const SizedBox(height: 36.0), // coba tes
                   GestureDetector(
                     onTap: () {
                       Navigator.push(
